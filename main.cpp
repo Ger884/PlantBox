@@ -1,3 +1,4 @@
+// โค้ดสำหรับการทำงานใน Rasberry Pi
 #include <iostream>
 #include <mysql.h>
 #include <fcntl.h>
