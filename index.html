@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plantbox - ระบบควบคุมการปลูกพืช</title>
+    <link rel="icon" href="pngtree-flower-pot-and-plant-logo-growth-vector-logo-image_322946-removebg-preview.png" type="image/png">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500&display=swap');
+
+        body { 
+            background: #f0f2f1; 
+            font-family: 'Kanit', sans-serif; 
+            overflow-x: hidden; 
+        }
+
+        .node-card {
+            background: white; 
+            border-radius: 20px; 
+            border: none;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer; 
+            position: relative; 
+            z-index: 1; 
+            height: 100%;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        .node-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1); 
+        }
+
+        .node-card.expanded {
+            position: fixed; top: 0; left: 0; 
+            width: 100vw !important; height: 100vh !important;
+            z-index: 9999; margin: 0; border-radius: 0; 
+            cursor: default; overflow-y: auto; padding: 50px !important;
+        }
+
+        .graph-content { display: none; margin-top: 30px; height: 60vh; }
+        .expanded .graph-content { display: block; }
+        .expanded .hide-on-expand { display: none; }
+
+        .close-btn { 
+            display: none; position: absolute; top: 30px; right: 30px; 
+            font-size: 2.5rem; color: #dc3545; cursor: pointer; z-index: 10001;
+        }
+        .expanded .close-btn { display: block; }
+
+        .sensor-val { font-size: 1.3rem; font-weight: bold; color: #2e7d32; display: block; }
+        .sensor-label { font-size: 0.7rem; color: #6c757d; display: block; text-transform: uppercase; margin-bottom: 2px; }
+
+        .action-btns { position: absolute; top: 15px; right: 15px; display: flex; gap: 5px; z-index: 10; }
+        .btn-circle { width: 32px; height: 32px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; transition: 0.3s; font-size: 0.8rem; }
+        .btn-edit { background: rgba(25, 135, 84, 0.1); color: #198754; }
+        .btn-edit:hover { background: #198754; color: white; }
+        .btn-del { background: rgba(220, 53, 69, 0.1); color: #dc3545; }
+        .btn-del:hover { background: #dc3545; color: white; }
+        
+        .nutrient-box { border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; }
+        .val-nutrient { color: #0d6efd; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-dark bg-success p-3 shadow-sm">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div>
+            <span class="navbar-brand fw-bold mb-0"><i class="fas fa-leaf"></i> Plantbox Control</span>
+            <div id="current-time" style="font-size: 0.9rem; color: #e0e0e0;"></div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-light btn-sm fw-bold" onclick="toggleLang()">
+                <i class="fas fa-language"></i> <span id="lang-btn">EN</span>
+            </button>
+            <button class="btn btn-light fw-bold btn-sm" onclick="addNode()">
+                <i class="fas fa-plus"></i> <span data-i18n="add_node">เพิ่ม Node</span>
+            </button>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4 mb-5">
+    <div id="node-list" class="row g-4"></div>
+</div>
+
+<script>
+    // ========== ตัวแปรหลัก ==========
+    let nodes = JSON.parse(localStorage.getItem('pb_nodes')) || [];
+    let currentLang = localStorage.getItem('pb_lang') || 'th';
+    let myChart = null;
+
+    // ========== พจนานุกรมภาษา ==========
+    const i18n = {
+        th: {
+            add_node: "เพิ่ม Node", edit_node: "แก้ไข Node", delete_confirm: "ยืนยันการลบ?", 
+            delete_text: "คุณต้องการลบโหนดนี้ใช่หรือไม่?", save: "บันทึก", cancel: "ยกเลิก",
+            offline: "โหนดออฟไลน์", update: "อัปเดต: ", history_title: "กราฟวิเคราะห์ข้อมูล",
+            click_expand: "คลิกเพื่อดูประวัติ", name_label: "ชื่อเรียก", ip_label: "เลข IP Address",
+            temp: "อุณหภูมิ", hum: "ความชื้น", ph: "ค่า pH", ec: "ค่า EC", n: "N", p: "P", k: "K"
+        },
+        en: {
+            add_node: "Add Node", edit_node: "Edit Node", delete_confirm: "Are you sure?", 
+            delete_text: "Do you want to delete this node?", save: "Save", cancel: "Cancel",
+            offline: "Node Offline", update: "Update: ", history_title: "Data Analysis Graph",
+            click_expand: "Click to view history", name_label: "Node Name", ip_label: "IP Address",
+            temp: "Temp", hum: "Hum", ph: "pH", ec: "EC", n: "N", p: "P", k: "K"
+        }
+    };
+
+    // ========== ฟังก์ชันสลับภาษา ==========
+    function toggleLang() {
+        currentLang = currentLang === 'th' ? 'en' : 'th';
+        localStorage.setItem('pb_lang', currentLang);
+        document.getElementById('lang-btn').innerText = currentLang === 'th' ? 'EN' : 'TH';
+        render();
+    }
+
+    // ========== อัปเดตนาฬิกา ==========
+    function updateClock() {
+        const now = new Date();
+        document.getElementById('current-time').innerText = now.toLocaleString(currentLang === 'th' ? 'th-TH' : 'en-US');
+    }
+    setInterval(updateClock, 1000);
+
+    // ========== Render รายการโหนด ==========
+    function render() {
+        const list = document.getElementById('node-list');
+        list.innerHTML = '';
+        
+        if (nodes.length === 0) {
+            list.innerHTML = `<div class="col-12 text-center mt-5 text-muted"><h3>${currentLang === 'th' ? 'ไม่มี Node ในระบบ' : 'No Nodes Found'}</h3></div>`;
+            return;
+        }
+
+        nodes.forEach((n, i) => {
+            list.innerHTML += `
+                <div class="col-md-4">
+                    <div class="node-card p-4" id="card-${i}" onclick="expandCard(${i}, '${n.ip}', '${n.name}')">
+                        <i class="fas fa-times-circle close-btn" onclick="shrinkCard(event, ${i})"></i>
+                        
+                        <div class="action-btns hide-on-expand">
+                            <button class="btn-circle btn-edit" onclick="editNode(event, ${i})"><i class="fas fa-pen"></i></button>
+                            <button class="btn-circle btn-del" onclick="deleteNode(event, ${i})"><i class="fas fa-trash"></i></button>
+                        </div>
+
+                        <div class="mb-3">
+                            <h2 class="fw-bold text-success mb-0">${n.name}</h2>
+                            <p class="text-muted small mb-0"><i class="fas fa-network-wired"></i> IP: ${n.ip}</p>
+                            <small class="text-muted" id="time-${i}">-</small>
+                        </div>
+                        
+                        <div id="live-main-${i}" class="row g-2 border-top pt-3 text-center">
+                            <div class="col-4 border-end"><small class="sensor-label">${i18n[currentLang].temp}</small><span class="sensor-val">-</span></div>
+                            <div class="col-4 border-end"><small class="sensor-label">${i18n[currentLang].hum}</small><span class="sensor-val">-</span></div>
+                            <div class="col-4"><small class="sensor-label">${i18n[currentLang].ph}</small><span class="sensor-val">-</span></div>
+                        </div>
+
+                        <div id="live-nutrient-${i}" class="row g-1 nutrient-box text-center">
+                            <div class="col-3"><small class="sensor-label">${i18n[currentLang].ec}</small><span class="sensor-val val-nutrient">-</span></div>
+                            <div class="col-3"><small class="sensor-label">N</small><span class="sensor-val val-nutrient">-</span></div>
+                            <div class="col-3"><small class="sensor-label">P</small><span class="sensor-val val-nutrient">-</span></div>
+                            <div class="col-3"><small class="sensor-label">K</small><span class="sensor-val val-nutrient">-</span></div>
+                        </div>
+
+                        <div class="graph-content">
+                            <hr>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h3>${i18n[currentLang].history_title}</h3>
+                                <select class="form-select w-25" id="type-${i}" onchange="updateGraph(${i}, '${n.ip}')" onclick="event.stopPropagation()">
+                                    <optgroup label="Select Sensors">
+                                        <option value="temp">${i18n[currentLang].temp}</option>
+                                        <option value="hum">${i18n[currentLang].hum}</option>
+                                        <option value="ph">${i18n[currentLang].ph}</option>
+                                        <option value="ec">${i18n[currentLang].ec}</option>
+                                        <option value="n">Nitrogen (N)</option>
+                                        <option value="p">Phosphorus (P)</option>
+                                        <option value="k">Potassium (K)</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div style="position: relative; height:50vh; width:100%"><canvas id="chart-${i}"></canvas></div>
+                        </div>
+                    </div>
+                </div>`;
+            updateLive(n.ip, i);
+        });
+    }
+
+    // ========== ดึงข้อมูล Real-time ==========
+    async function updateLive(ip, idx) {
+        try {
+            const res = await fetch(`http://${ip}/api.php`, { signal: AbortSignal.timeout(3000) });
+            const d = await res.json();
+            if (d && d.length > 0) {
+                const v = d[0];
+                document.getElementById(`time-${idx}`).innerText = i18n[currentLang].update + new Date().toLocaleTimeString();
+                
+                document.getElementById(`live-main-${idx}`).innerHTML = `
+                    <div class="col-4 border-end"><small class="sensor-label">${i18n[currentLang].temp}</small><span class="sensor-val">${v.temp}°</span></div>
+                    <div class="col-4 border-end"><small class="sensor-label">${i18n[currentLang].hum}</small><span class="sensor-val">${v.hum}%</span></div>
+                    <div class="col-4"><small class="sensor-label">${i18n[currentLang].ph}</small><span class="sensor-val">${v.ph}</span></div>`;
+                
+                document.getElementById(`live-nutrient-${idx}`).innerHTML = `
+                    <div class="col-3"><small class="sensor-label">${i18n[currentLang].ec}</small><span class="sensor-val val-nutrient">${v.ec}</span></div>
+                    <div class="col-3"><small class="sensor-label">N</small><span class="sensor-val val-nutrient">${v.n}</span></div>
+                    <div class="col-3"><small class="sensor-label">P</small><span class="sensor-val val-nutrient">${v.p}</span></div>
+                    <div class="col-3"><small class="sensor-label">K</small><span class="sensor-val val-nutrient">${v.k}</span></div>`;
+            }
+        } catch (e) { 
+            const el = document.getElementById(`live-main-${idx}`);
+            if (el) el.innerHTML = `<div class="col-12 text-danger small">${i18n[currentLang].offline}</div>`; 
+            document.getElementById(`live-nutrient-${idx}`).innerHTML = "";
+        }
+    }
+
+    // ========== วาดกราฟประวัติ ==========
+    async function updateGraph(idx, ip) {
+        try {
+            const type = document.getElementById(`type-${idx}`).value;
+            const res = await fetch(`http://${ip}/api.php?history=1`);
+            const history = await res.json();
+            const ctx = document.getElementById(`chart-${idx}`).getContext('2d');
+            
+            if (myChart) myChart.destroy();
+            
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: history.map((_, i) => history.length - i).reverse(),
+                    datasets: [{ 
+                        label: type.toUpperCase(), 
+                        data: history.map(h => h[type]).reverse(), 
+                        borderColor: '#198754', 
+                        fill: true, 
+                        backgroundColor: 'rgba(25,135,84,0.1)', 
+                        tension: 0.3
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        } catch (e) { console.error("Graph Error:", e); }
+    }
+
+    // ========== ขยาย/ย่อ Card ==========
+    function expandCard(idx, ip, name) {
+        const card = document.getElementById(`card-${idx}`);
+        if (card.classList.contains('expanded')) return;
+        card.classList.add('expanded');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => updateGraph(idx, ip), 500);
+    }
+
+    function shrinkCard(e, idx) {
+        e.stopPropagation();
+        document.getElementById(`card-${idx}`).classList.remove('expanded');
+        document.body.style.overflow = 'auto';
+        if (myChart) myChart.destroy();
+    }
+
+    // ========== จัดการโหนด (เพิ่ม/แก้ไข/ลบ) ==========
+    async function addNode() {
+        const { value: f } = await Swal.fire({
+            title: i18n[currentLang].add_node,
+            html: `<input id="n1" class="swal2-input" placeholder="${i18n[currentLang].name_label}">
+                   <input id="n2" class="swal2-input" placeholder="${i18n[currentLang].ip_label}">`,
+            confirmButtonText: i18n[currentLang].save, 
+            showCancelButton: true,
+            cancelButtonText: i18n[currentLang].cancel,
+            preConfirm: () => ({ name: document.getElementById('n1').value, ip: document.getElementById('n2').value })
+        });
+        if (f && f.name && f.ip) { nodes.push(f); saveAndRender(); }
+    }
+
+    async function editNode(e, idx) {
+        e.stopPropagation();
+        const { value: f } = await Swal.fire({
+            title: i18n[currentLang].edit_node,
+            html: `<input id="n1" class="swal2-input" value="${nodes[idx].name}">
+                   <input id="n2" class="swal2-input" value="${nodes[idx].ip}">`,
+            confirmButtonText: i18n[currentLang].save, 
+            showCancelButton: true,
+            preConfirm: () => ({ name: document.getElementById('n1').value, ip: document.getElementById('n2').value })
+        });
+        if (f && f.name && f.ip) { nodes[idx] = f; saveAndRender(); }
+    }
+
+    async function deleteNode(e, idx) {
+        e.stopPropagation();
+        const r = await Swal.fire({ 
+            title: i18n[currentLang].delete_confirm, 
+            text: i18n[currentLang].delete_text, 
+            icon: 'warning', 
+            showCancelButton: true 
+        });
+        if (r.isConfirmed) { nodes.splice(idx, 1); saveAndRender(); }
+    }
+
+    function saveAndRender() { 
+        localStorage.setItem('pb_nodes', JSON.stringify(nodes)); 
+        render(); 
+    }
+
+    // ========== เริ่มต้นระบบ ==========
+    render(); 
+    updateClock();
+    setInterval(() => nodes.forEach((n, i) => updateLive(n.ip, i)), 10000);
+</script>
+</body>
+</html>
