@@ -1,3 +1,4 @@
+// api สำหรับส่งข้อมูลไปหน้าเว็บ
 <?php
 // กำหนด Header ให้ส่งข้อมูลเป็น JSON และรองรับ UTF8
 header("Content-Type: application/json; charset=UTF-8");
