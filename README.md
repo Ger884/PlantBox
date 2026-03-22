@@ -25,5 +25,5 @@
 
 ### 📂 โครงสร้างโฟลเดอร์
 * `arduino.ino` : โค้ดสำหรับ Arduino IDE (อ่านเซนเซอร์ + ส่ง Serial)
-* `pi_code/` : โค้ดภาษา C++ สำหรับรับค่าและลง Database
+* `main.cpp` : โค้ดภาษา C++ สำหรับรับค่าและลง Database
 * `database/` : ไฟล์ .sql สำหรับสร้างตาราง (Table Schema)
