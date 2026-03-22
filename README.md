@@ -27,4 +27,4 @@
 * `arduino.ino` : โค้ดสำหรับ Arduino IDE (อ่านเซนเซอร์ + ส่ง Serial)
 * `main.cpp` : โค้ดภาษา C++ สำหรับรับค่าและลง Database
 * `index.html` : โครงสร้าง Web Dashboard
-* `database/` : ไฟล์ .sql สำหรับสร้างตาราง (Table Schema)
+* `api.php` : สำหรับส่งข้อมูลจาก Pi ไปยัง Web Dashboard
