@@ -18,7 +18,7 @@
 * **เคส:** แผ่นอะคริลิคประกอบเอง
 
 ### 💻 ซอฟต์แวร์ที่ใช้ (Software)
-* **Language:** C++, SQL
+* **Language:** C++, SQL, PHP
 * **Database:** MariaDB (MySQL)
 
 ---
