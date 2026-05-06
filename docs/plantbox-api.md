@@ -384,8 +384,9 @@ temp,hum,ec,ph,n,p,k
 
 ## ข้อควรรู้ก่อน deploy จริง
 
-- ตอนนี้ `lib/plantbox-store.ts` ใช้ไฟล์ `.data/plantbox-store.json` เหมาะกับ dev/local
-- ถ้าจะ deploy production ควรเปลี่ยน store เป็น MySQL, Postgres, Supabase หรือ Neon
+- `lib/plantbox-store.ts` จะใช้ Postgres อัตโนมัติเมื่อมี `DATABASE_URL` หรือ `POSTGRES_URL`
+- ถ้าไม่มี env จะ fallback เป็นไฟล์ `.data/plantbox-store.json` สำหรับ dev/local
+- ถ้าจะ deploy บน Vercel ให้ตั้ง `DATABASE_URL` เป็น Postgres connection string เช่น Neon, Supabase หรือ Vercel Marketplace
 - endpoint จัดการเครื่อง (`/api/plantbox/devices`) ตอนนี้ยังไม่มีระบบ login/admin auth
 - endpoint รับ readings ปลอดภัยกว่า เพราะต้องมี token ของเครื่อง
 - ตอนนี้ token ถูกเก็บไว้เพื่อให้ dashboard copy ซ้ำและสร้างโค้ดสำเร็จรูปได้ หากใช้ production จริงควรเข้ารหัส token ใน database และป้องกันหน้า dashboard ด้วยระบบ login/admin auth

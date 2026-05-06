@@ -193,7 +193,10 @@ temp,hum,ec,ph,n,p,k
 
 ## Storage
 
-ตอนนี้ระบบใช้ไฟล์ local สำหรับเก็บข้อมูล:
+ระบบเลือก storage อัตโนมัติ:
+
+- ถ้ามี `DATABASE_URL` หรือ `POSTGRES_URL` จะใช้ Postgres
+- ถ้าไม่มี env จะ fallback เป็นไฟล์ local สำหรับ development
 
 ```txt
 .data/plantbox-store.json
@@ -213,17 +216,49 @@ temp,hum,ec,ph,n,p,k
 - deployment ที่ filesystem หายหลัง restart
 - ระบบหลาย instance
 
-ถ้าจะใช้งาน production ควรเปลี่ยน `lib/plantbox-store.ts` ไปใช้ database จริง เช่น:
+ถ้าจะใช้งานบน Vercel ต้องตั้งค่า Postgres connection string:
 
-- PostgreSQL
-- MySQL
-- Supabase
-- Neon
-- PlanetScale
+```bash
+DATABASE_URL="postgresql://user:password@host:5432/database?sslmode=require"
+```
+
+ใช้ Postgres provider ใดก็ได้ เช่น Neon, Supabase, Vercel Marketplace หรือ database ที่รองรับ Postgres connection string
 
 ## Environment
 
 ตอนนี้ token ของเครื่องถูกสร้างจาก dashboard และเก็บใน store เพื่อให้ copy ซ้ำและ generate โค้ดสำเร็จรูปได้
+
+ไฟล์ตัวอย่าง:
+
+```bash
+cp .env.example .env.local
+```
+
+ถ้าใช้ local development และยังไม่ต้องการ database สามารถปล่อย `DATABASE_URL` ว่างไว้ได้
+
+## Deploy on Vercel
+
+1. Push repo ขึ้น GitHub
+2. Import project ใน Vercel
+3. เพิ่ม Postgres database ผ่าน Vercel Marketplace, Neon, Supabase หรือ provider ที่ต้องการ
+4. ตั้ง Environment Variable ใน Vercel:
+
+```txt
+DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
+```
+
+5. Deploy
+
+หลัง deploy ครั้งแรก API จะสร้างตารางให้อัตโนมัติเมื่อมี request แรกเข้ามา:
+
+- `plantbox_devices`
+- `plantbox_readings`
+
+ถ้าใช้ Vercel CLI สามารถเพิ่ม env ได้ด้วย:
+
+```bash
+vercel env add DATABASE_URL production
+```
 
 ## Future Plan: Large Farm Setup
 
